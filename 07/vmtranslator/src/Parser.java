@@ -31,17 +31,17 @@ public class Parser {
         }
     }
 
-    public String arg2() {
-        return currentCommand.split(" ")[2];
+    public int arg2() {
+        return Integer.parseInt(currentCommand.split(" ")[2]);
     }
 
     public CommandType commandType() {
-        if (currentCommand.startsWith("@")) {
-            return CommandType.C_ARITHMETIC;
-        } else if (currentCommand.startsWith("(")) {
+        if (currentCommand.startsWith("push")) {
             return CommandType.C_PUSH;
-        } else {
+        } else if (currentCommand.startsWith("pop")) {
             return CommandType.C_POP;
+        } else {
+            return CommandType.C_ARITHMETIC;
         }
     }
 
