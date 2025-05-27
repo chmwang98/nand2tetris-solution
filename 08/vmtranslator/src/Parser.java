@@ -40,12 +40,24 @@ public class Parser {
             return CommandType.C_PUSH;
         } else if (currentCommand.startsWith("pop")) {
             return CommandType.C_POP;
+        } else if (currentCommand.startsWith("label")) {
+            return CommandType.C_LABEL;
+        } else if (currentCommand.startsWith("goto")) {
+            return CommandType.C_GOTO;
+        } else if (currentCommand.startsWith("if-goto")) {
+            return CommandType.C_IF;
+        } else if (currentCommand.startsWith("function")) {
+            return CommandType.C_FUNCTION;
+        } else if (currentCommand.startsWith("call")) {
+            return CommandType.C_CALL;
+        } else if (currentCommand.startsWith("return")) {
+            return CommandType.C_RETURN;
         } else {
             return CommandType.C_ARITHMETIC;
         }
     }
 
     public enum CommandType {
-        C_ARITHMETIC, C_PUSH, C_POP;
+        C_ARITHMETIC, C_PUSH, C_POP, C_LABEL, C_GOTO, C_IF, C_FUNCTION, C_RETURN, C_CALL;
     }
 }

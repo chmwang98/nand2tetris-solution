@@ -1,6 +1,7 @@
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.util.UUID;
 
 public class CodeWriter {
     private int labelCounter = 0;
@@ -10,10 +11,25 @@ public class CodeWriter {
     public CodeWriter(File file) {
         try {
             writer = new PrintWriter(file);
-            fileName = file.getName().replace(".vm", "");
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    public void setFileName(String fileName) {
+        this.fileName = fileName;
+    }
+
+    public void writeInit() {
+        // SP = 256
+        writer.write(
+                "@256\n" +
+                "D=A\n" +
+                "@SP\n" +
+                "M=D\n"
+        );
+        // call Sys.init
+        writeCall("Sys.init", 0);
     }
 
     public void writeArithmetic(String command) {
@@ -195,5 +211,159 @@ public class CodeWriter {
 
     public void close() {
         writer.close();
+    }
+
+    public void writeLabel(String label) {
+        writer.write(
+                "(" + label + ")\n"
+        );
+    }
+
+    public void writeGoto(String label) {
+        writer.write(
+                "@" + label + "\n" +
+                "0;JMP\n"
+        );
+    }
+
+    public void writeIf(String label) {
+        writer.write(
+                "@SP\n" +
+                "AM=M-1\n" +
+                "D=M\n" +
+                "@" + label + "\n" +
+                "D;JNE\n"       // true: -1; false: 0
+        );
+    }
+
+    public void writeFunction(String functionName, int nVars) {
+        // declare the function label
+        writer.write("(" + functionName + ")\n");
+
+        // initialize nVars local variables to 0
+        for (int i = 0; i < nVars; i++) {
+            writer.write(
+                    "@0\n" +
+                    "D=A\n" +
+                    pushDToStack()
+            );
+        }
+    }
+
+    private int callCounter = 0;
+    public void writeCall(String functionName, int nVars) {
+        String returnLabel = "RET_" + functionName + "_" + callCounter++;
+        writer.write(
+                // create a return address
+                "@" + returnLabel + "\n" +
+                "D=A\n" +
+                // push return address into stack
+                pushDToStack() +
+
+                // push LCL
+                "@LCL\n" +
+                "D=M\n" +
+                pushDToStack() +
+
+                // push ARG
+                "@ARG\n" +
+                "D=M\n" +
+                pushDToStack() +
+
+                // push THIS
+                "@THIS\n" +
+                "D=M\n" +
+                pushDToStack() +
+
+                // push THAT
+                "@THAT\n" +
+                "D=M\n" +
+                pushDToStack() +
+
+                // reposition ARG = SP - 5 - nVars
+                "@SP\n" +
+                "D=M\n" +
+                "@5\n" +
+                "D=D-A\n" +
+                "@" + nVars + "\n" +
+                "D=D-A\n" +
+                "@ARG\n" +
+                "M=D\n" +
+
+                // reposition LCL = SP
+                "@SP\n" +
+                "D=M\n" +
+                "@LCL\n" +
+                "M=D\n" +
+
+                // go to execute callee's code
+                "@" + functionName + "\n" +
+                "0;JMP\n" +
+
+                // return address
+                "(" + returnLabel + ")\n"
+        );
+    }
+
+    public void writeReturn() {
+        writer.write(
+                // endFrame = LCL, save to register 13
+                "@LCL\n" +
+                "D=M\n" +
+                "@R13\n" +
+                "M=D\n" +
+
+                // retAddr = *(endFrame - 5)
+                "@5\n" +
+                "A=D-A\n" +
+                "D=M\n" +
+                "@R14\n" +
+                "M=D\n" +
+
+                // *ARG = pop()
+                popStackToD() +
+                "@ARG\n" +
+                "A=M\n" +
+                "M=D\n" +
+
+                // SP = ARG + 1
+                "@ARG\n" +
+                "D=M+1\n" +
+                "@SP\n" +
+                "M=D\n" +
+
+                // THAT = *(endFrame - 1)
+                "@R13\n" +
+                "AM=M-1\n" +    // endFrame -= 1
+                "D=M\n" +
+                "@THAT\n" +
+                "M=D\n" +
+
+                // THIS = *(endFrame - 2)
+                "@R13\n" +
+                "AM=M-1\n" +
+                "D=M\n" +
+                "@THIS\n" +
+                "M=D\n" +
+
+                // ARG = *(endFrame - 3)
+                "@R13\n" +
+                "AM=M-1\n" +
+                "D=M\n" +
+                "@ARG\n" +
+                "M=D\n" +
+
+                // LCL = *(endFrame - 4)
+                "@R13\n" +
+                "AM=M-1\n" +
+                "D=M\n" +
+                "@LCL\n" +
+                "M=D\n" +
+
+                // goto retAddr
+                "@R14\n" +
+                "A=M\n" +
+                "0;JMP\n"
+        );
     }
 }
